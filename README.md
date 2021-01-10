@@ -1,4 +1,6 @@
-[![Anurag's github stats](https://github-readme-stats.vercel.app/api?username=LCYLYM)](https://github.com/anuraghazra/github-readme-stats)
+[![LYM's github stats](https://github-readme-stats.vercel.app/api?username=LCYLYM)](https://github.com/anuraghazra/github-readme-stats)
+
+![alt LYM'S BLOG](https://loli.by/wp-content/uploads/2019/10/LOGO.png)
 
 
 <!--
