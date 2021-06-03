@@ -40,6 +40,5 @@ jobs:
           plugin_people_limit: 24
           plugin_people_size: 28
           plugin_people_types: followers, following
-          hosted_by: LYMS BLOG
-          hosted_link: https://loli.by/
+
           
