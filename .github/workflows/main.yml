@@ -13,7 +13,7 @@ jobs:
       - uses: lowlighter/metrics@latest
         with:
           # Your GitHub token
-          token: ${{ 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 }}
+          token: ${{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}}
 
           # Options
           user: LCYLYM
