@@ -10,10 +10,10 @@ jobs:
   github-metrics:
     runs-on: ubuntu-latest
     steps:
-      - uses: lowlighter/metrics@latest
+      - uses: LCYLYM/metrics@latest
         with:
           # Your GitHub token
-          token: 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
+          token: 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
 
           # Options
           user: LCYLYM
@@ -40,5 +40,6 @@ jobs:
           plugin_people_limit: 24
           plugin_people_size: 28
           plugin_people_types: followers, following
-
+          hosted_by: LYMS BLOG
+          hosted_link: https://loli.by/
           
