@@ -13,7 +13,7 @@ jobs:
       - uses: LCYLYM/metrics@latest
         with:
           # Your GitHub token
-          token: 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
+          token: 
 
           # Options
           user: LCYLYM
