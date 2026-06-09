@@ -8,22 +8,15 @@
 
 [![博客](https://img.shields.io/badge/%E5%8D%9A%E5%AE%A2-loli.by-FF6B35?style=flat-square&logo=rss&logoColor=white)](https://loli.by/)
 &nbsp;&nbsp;
-[![关注](https://img.shields.io/github/followers/LCYLYM?style=flat-square&label=%E5%85%B3%E6%B3%A8&color=30A3DC)](https://github.com/LCYLYM)
-
+<br/>
+  [![GitHub followers](https://img.shields.io/github/followers/LCYLYM?style=for-the-badge&logo=github)](https://github.com/LCYLYM?tab=followers)
+  [![GitHub Stars](https://img.shields.io/github/stars/LCYLYM?style=for-the-badge&logo=github)](https://github.com/LCYLYM?tab=repositories)
+<img src="https://komarev.com/ghpvc/?username=LCYLYM&color=blueviolet&style=for-the-badge" alt="访问计数" />
 </div>
 
----
 
-```yaml
-# 生鱼安乐 · LCYLYM
-定位: AI Agent 工具链 · MCP 生态系统 · 系统编程
-技术: Rust / TypeScript / Python / Swift / Go
-博客: loli.by
-```
 
----
-
-## 🔨 正在构建
+## <img src="https://media.giphy.com/media/VgCDAzcKvsR6OM0uWg/giphy.gif" width="50"> 正在构建
 
 <div align="center">
 <marquee behavior="scroll" direction="left" scrollamount="4">
@@ -33,7 +26,7 @@
 
 <br/>
 
-## 📦 开源项目
+## <img src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50"> 开源项目
 
 <table width="100%">
 <tr>
@@ -122,12 +115,12 @@
 </tr>
 </table>
 
-## 📊 数据
-
+## <img src="https://media.giphy.com/media/fYSnHlufseco8Fh93Z/giphy.gif" width="30"> 数据
+<div align="center">
 <img src="https://github-readme-stats-fast.vercel.app/api?username=LCYLYM&show_icons=true&theme=github_dark_dimmed&hide_border=true&rank_icon=github&include_all_commits=true" height="165" />
 <img src="https://streak-stats.demolab.com?user=LCYLYM&theme=dark&hide_border=true" height="165" />
-
-## 🐍 贡献图谱
+</div>
+##  🐍 贡献图谱
 
 <!-- 需先运行 .github/workflows/snake.yml，生成后此处自动更新 -->
 <picture>
