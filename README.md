@@ -14,9 +14,13 @@
 
 ## 我是生鱼安乐
 
-喜欢把新东西接进真实世界。
+最近在弄的几件事：
 
-Agent 会连 SSH、保存自己的工作现场；AI 额度可以住进 Touch Bar；群友的歌单也能变成一场实时游戏。语言和平台随问题换，比起把概念讲得漂亮，我更在意它能不能在真实机器、真实网络和真实用户路径上跑起来。
+agent 通过 MCP 进真实 SSH，断线能自己恢复并保存现场
+AI 额度直接显示在 macOS 菜单栏和 Touch Bar
+把群里的歌单做成可部署的实时盲猜游戏
+
+其余时间就跟着具体问题换语言和平台。
 
 `Agent systems` · `MCP / SSH` · `Local-first tools` · `macOS / Windows` · `Browser experiments`
 
