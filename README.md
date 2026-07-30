@@ -1,12 +1,12 @@
 <div align="center">
 
-<a href="https://lcylym.github.io/LCYLYM/studio/">
+<a href="https://loli.by/LCYLYM/studio/">
   <img src="./assets/studio-hero.gif" width="100%" alt="生鱼安乐的 3D 开源工作室：Agent 系统、原生工具与浏览器实验">
 </a>
 
 <br>
 
-[中文](#中文) · [English](#english) · [进入 3D 工作室](https://lcylym.github.io/LCYLYM/studio/) · [Blog](https://loli.by/)
+[中文](#中文) · [English](#english) · [进入 3D 工作室](https://loli.by/LCYLYM/studio/) · [Blog](https://loli.by/)
 
 </div>
 
@@ -126,6 +126,6 @@ I build agent infrastructure, local-first utilities, native interface experiment
 
 <div align="center">
 
-[Back to 中文](#中文) · [Explore the 3D studio](https://lcylym.github.io/LCYLYM/studio/)
+[Back to 中文](#中文) · [Explore the 3D studio](https://loli.by/LCYLYM/studio/)
 
 </div>
