@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="生鱼安乐 LCYLYM 的交互式 3D 开源工作室：Agent 基础设施、原生工具与浏览器实验。">
+  <meta name="theme-color" content="#17130f">
+  <title>LCYLYM · 3D Open-source Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <style>
+    :root {
+      --ink: #201b17;
+      --cream: #fff4d8;
+      --paper: #f6ecda;
+      --clay: #c65f39;
+      --clay-deep: #8f452b;
+      --lime: #c9f27c;
+      --night: #17130f;
+      --night-soft: #251f1a;
+      --white: #fffaf0;
+      --muted: #aa9f90;
+      --line: rgba(255, 250, 240, .14);
+      --serif: "Songti SC", "STSong", "Noto Serif SC", Georgia, serif;
+      --sans: "Avenir Next", "PingFang SC", system-ui, sans-serif;
+      --mono: "SFMono-Regular", "JetBrains Mono", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      color: var(--ink);
+      background: #d9c7ac;
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .shade {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(25, 18, 13, .10), transparent 45%, rgba(25, 18, 13, .22)),
+        linear-gradient(0deg, rgba(25, 18, 13, .46), transparent 45%);
+    }
+
+    .loader {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      color: var(--cream);
+      background: var(--night);
+      transition: opacity .55s ease, visibility .55s ease;
+    }
+    .loader.done { opacity: 0; visibility: hidden; }
+    .loader-inner { width: min(360px, 72vw); }
+    .loader-mark { font: 700 clamp(36px, 7vw, 70px)/1 var(--serif); letter-spacing: -.08em; }
+    .loader-line { height: 2px; margin: 22px 0 11px; overflow: hidden; background: rgba(255,255,255,.12); }
+    .loader-line i { display: block; width: 12%; height: 100%; background: var(--clay); animation: load 1.2s ease-in-out infinite; }
+    .loader-copy { color: var(--muted); font: 10px/1 var(--mono); letter-spacing: .12em; }
+    @keyframes load { 50% { width: 72%; transform: translateX(20%); } 100% { width: 14%; transform: translateX(620%); } }
+
+    .topbar {
+      position: fixed;
+      top: max(22px, env(safe-area-inset-top));
+      left: 24px;
+      right: 24px;
+      z-index: 20;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      pointer-events: none;
+    }
+    .identity, .controls { pointer-events: auto; }
+    .identity {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 13px;
+      border: 1px solid rgba(32, 27, 23, .15);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(255, 244, 216, .84);
+      box-shadow: 0 10px 32px rgba(54, 35, 21, .12);
+      backdrop-filter: blur(13px);
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .fish { font-size: 17px; line-height: .8; }
+    .controls { display: flex; align-items: center; gap: 8px; }
+    .control {
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--white);
+      background: rgba(23, 19, 15, .76);
+      backdrop-filter: blur(12px);
+      cursor: pointer;
+      font: 600 10px/1 var(--mono);
+      letter-spacing: .08em;
+    }
+    .control:hover { background: rgba(23, 19, 15, .94); }
+    .online { display: inline-flex; align-items: center; gap: 8px; }
+    .online::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 13px var(--lime); }
+
+    .thesis {
+      position: fixed;
+      top: 17%;
+      right: clamp(28px, 6vw, 86px);
+      z-index: 10;
+      width: min(47vw, 610px);
+      text-align: right;
+      pointer-events: none;
+    }
+    .thesis .eyebrow {
+      margin-bottom: 12px;
+      color: var(--clay-deep);
+      font: 700 10px/1.3 var(--mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .thesis h1 {
+      margin: 0;
+      font: 900 clamp(42px, 6.5vw, 94px)/1.02 var(--serif);
+      letter-spacing: -.07em;
+      text-wrap: balance;
+      text-shadow: 0 1px rgba(255,255,255,.35);
+    }
+    .thesis p {
+      max-width: 36em;
+      margin: 18px 0 0 auto;
+      color: #4e4036;
+      font-size: clamp(12px, 1.15vw, 15px);
+      line-height: 1.75;
+    }
+
+    .hotspot {
+      position: fixed;
+      z-index: 16;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0;
+      border: 0;
+      color: var(--cream);
+      background: transparent;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .hotspot:hover { transform: translate(-50%, -50%) scale(1.05); }
+    .hotspot i {
+      position: relative;
+      width: 29px;
+      height: 29px;
+      border: 2px solid var(--clay);
+      border-radius: 50%;
+      background: rgba(255, 244, 216, .30);
+    }
+    .hotspot i::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--clay); }
+    .hotspot i::after { content: ""; position: absolute; inset: -2px; border: 1px solid var(--clay); border-radius: 50%; animation: ping 2s ease-out infinite; }
+    .hotspot span {
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 6px;
+      background: rgba(28, 23, 19, .86);
+      box-shadow: 0 8px 24px rgba(25, 16, 11, .18);
+      backdrop-filter: blur(9px);
+      font: 600 9px/1 var(--mono);
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+    @keyframes ping { to { transform: scale(1.9); opacity: 0; } }
+
+    .console {
+      position: fixed;
+      left: 24px;
+      bottom: 116px;
+      z-index: 12;
+      width: min(448px, calc(100vw - 48px));
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: #efe7d7;
+      background: rgba(23, 19, 15, .88);
+      box-shadow: 0 22px 52px rgba(26, 17, 12, .24);
+      backdrop-filter: blur(14px);
+      font: 11px/1.65 var(--mono);
+      pointer-events: none;
+    }
+    .console-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 9px; color: #958a7c; font-size: 9px; }
+    .console-bar i { width: 6px; height: 6px; border-radius: 50%; background: #d66d43; }
+    .console-bar i:nth-child(2) { background: #e5b763; }
+    .console-bar i:nth-child(3) { background: #91a873; }
+    .console-bar span { margin-left: 5px; }
+    .prompt { color: var(--lime); }
+    .trace { color: #9c9182; }
+    .trace b { color: #d98661; font-weight: 500; }
+
+    .project-rail {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      z-index: 22;
+      display: grid;
+      grid-template-columns: repeat(8, minmax(120px, 1fr));
+      gap: 1px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: rgba(255,255,255,.12);
+      box-shadow: 0 18px 44px rgba(23, 15, 10, .24);
+      backdrop-filter: blur(15px);
+    }
+    .project-button {
+      min-height: 72px;
+      padding: 12px 13px;
+      border: 0;
+      color: var(--white);
+      background: rgba(23, 19, 15, .86);
+      text-align: left;
+      cursor: pointer;
+    }
+    .project-button:hover, .project-button.active { background: rgba(49, 38, 30, .95); }
+    .project-button small { display: block; margin-bottom: 8px; color: #d98661; font: 600 8px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .project-button b { display: block; overflow: hidden; font: 600 10px/1.25 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+
+    .drawer {
+      position: fixed;
+      top: 74px;
+      right: 24px;
+      bottom: 103px;
+      z-index: 30;
+      width: min(410px, calc(100vw - 48px));
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--white);
+      background: rgba(23, 19, 15, .94);
+      box-shadow: 0 30px 90px rgba(18, 11, 7, .38);
+      backdrop-filter: blur(18px);
+      transform: translateX(calc(100% + 40px));
+      transition: transform .45s cubic-bezier(.2,.8,.2,1);
+    }
+    .drawer.open { transform: none; }
+    .drawer-close { float: right; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 50%; color: var(--white); background: transparent; cursor: pointer; }
+    .drawer-kicker { margin: 36px 0 10px; color: #d98661; font: 700 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .drawer h2 { margin: 0; font: 600 clamp(22px, 3vw, 34px)/1.12 var(--mono); letter-spacing: -.04em; overflow-wrap: anywhere; }
+    .drawer p { margin: 20px 0; color: #b8ad9e; font-size: 14px; line-height: 1.8; }
+    .drawer-stack { color: var(--cream); font: 10px/1.7 var(--mono); letter-spacing: .07em; }
+    .repo-link { position: absolute; left: 24px; right: 24px; bottom: 24px; display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border: 1px solid rgba(255,255,255,.18); border-radius: 7px; color: var(--night); background: var(--cream); text-decoration: none; font: 700 10px/1 var(--mono); letter-spacing: .08em; }
+
+    .capture-enter {
+      display: none;
+      position: fixed;
+      right: 25px;
+      bottom: 24px;
+      z-index: 18;
+      align-items: center;
+      gap: 10px;
+      color: #fff7ea;
+      font: 700 9px/1 var(--mono);
+      letter-spacing: .08em;
+      text-shadow: 0 1px 10px rgba(0,0,0,.5);
+    }
+    .capture-enter b { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid rgba(255,255,255,.6); border-radius: 50%; font-size: 14px; }
+
+    body.capture .controls, body.capture .hotspot, body.capture .project-rail, body.capture .drawer { display: none; }
+    body.capture .console { bottom: 22px; }
+    body.capture .capture-enter { display: flex; }
+    body.capture .thesis { top: 15%; }
+
+    @media (max-width: 760px) {
+      .topbar { left: 14px; right: 14px; top: 14px; }
+      .online { display: none; }
+      #reset { display: none; }
+      .thesis { top: 86px; left: 18px; right: 18px; width: auto; text-align: left; }
+      .thesis h1 { max-width: 8em; font-size: clamp(40px, 13vw, 66px); }
+      .thesis p { max-width: 25em; margin-left: 0; }
+      .console { left: 14px; bottom: 106px; width: calc(100vw - 28px); }
+      .project-rail { left: 10px; right: 10px; grid-template-columns: repeat(8, 142px); }
+      .hotspot { display: none; }
+      .drawer { top: 66px; right: 12px; bottom: 96px; width: calc(100vw - 24px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="一间可以探索的 3D 开源工作室"></canvas>
+  <div class="shade"></div>
+
+  <div class="loader" id="loader">
+    <div class="loader-inner">
+      <div class="loader-mark">LCYLYM.</div>
+      <div class="loader-line"><i></i></div>
+      <div class="loader-copy">BUILDING THE ROOM AROUND THE MODEL</div>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="identity"><span class="fish">𓆝</span><span>生鱼安乐 / LCYLYM</span></div>
+    <div class="controls">
+      <span class="control online">WORKSHOP ONLINE</span>
+      <button class="control" id="language" type="button" aria-label="Switch language">中 / EN</button>
+      <button class="control" id="reset" type="button">RESET VIEW</button>
+    </div>
+  </header>
+
+  <section class="thesis" aria-labelledby="hero-title">
+    <div class="eyebrow" data-copy="eyebrow">BUILT AROUND THE MODEL · AND OUTSIDE IT</div>
+    <h1 id="hero-title" data-copy="title">把新东西<br>接进真实世界。</h1>
+    <p data-copy="summary">Agent 会连 SSH、保存工作现场；AI 额度住进 Touch Bar；群友的歌单变成一场实时游戏。</p>
+  </section>
+
+  <button class="hotspot" id="hotspot-agent" type="button"><i></i><span>AGENT I/O</span></button>
+  <button class="hotspot" id="hotspot-native" type="button"><i></i><span>NATIVE TOOLS</span></button>
+  <button class="hotspot" id="hotspot-play" type="button"><i></i><span>REALTIME PLAYGROUND</span></button>
+
+  <div class="console" aria-hidden="true">
+    <div class="console-bar"><i></i><i></i><i></i><span>lcylym@studio — builder profile</span></div>
+    <div><span class="prompt">$</span> whoami</div>
+    <div>builder · agent systems · native oddities</div>
+    <div class="trace"><b>→</b> tool.called &nbsp; <b>→</b> evidence.saved &nbsp; <b>→</b> weird_idea.shipped</div>
+  </div>
+
+  <nav class="project-rail" id="project-rail" aria-label="Selected open-source projects"></nav>
+
+  <aside class="drawer" id="drawer" aria-live="polite">
+    <button class="drawer-close" id="drawer-close" type="button" aria-label="Close project details">×</button>
+    <div class="drawer-kicker" id="drawer-kicker"></div>
+    <h2 id="drawer-title"></h2>
+    <p id="drawer-description"></p>
+    <div class="drawer-stack" id="drawer-stack"></div>
+    <a class="repo-link" id="repo-link" href="#" target="_blank" rel="noreferrer">OPEN REPOSITORY <span>↗</span></a>
+  </aside>
+
+  <div class="capture-enter">CLICK TO ENTER THE 3D WORKSHOP <b>↗</b></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="js/room.js"></script>
+  <script src="js/profile-app.js"></script>
+</body>
+</html>
