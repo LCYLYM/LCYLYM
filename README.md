@@ -1,12 +1,12 @@
 <div align="center">
 
 <a href="https://loli.by/LCYLYM/studio/">
-  <img src="./assets/studio-hero.gif" width="100%" alt="生鱼安乐的沉浸式 3D 开源器物志：Agent 系统、原生工具与浏览器实验">
+  <img src="./assets/studio-hero.gif" width="100%" alt="生鱼安乐的 3D 开源工作室：Agent 系统、原生工具与浏览器实验">
 </a>
 
 <br>
 
-[中文](#中文) · [English](#english) · [进入 3D 开源器物志](https://loli.by/LCYLYM/studio/) · [Blog](https://loli.by/)
+[中文](#中文) · [English](#english) · [进入 3D 工作室](https://loli.by/LCYLYM/studio/) · [Blog](https://loli.by/)
 
 </div>
 
