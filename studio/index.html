@@ -37,19 +37,6 @@
     button, a { color: inherit; font: inherit; }
     button:focus-visible, a:focus-visible { outline: 1px solid var(--red-bright); outline-offset: 4px; }
 
-    .environment-plate {
-      position: fixed;
-      inset: -3%;
-      z-index: 0;
-      background:
-        linear-gradient(90deg, rgba(3,3,3,.5), transparent 22%, transparent 83%, rgba(3,3,3,.38)),
-        url("./assets/archive-environment.jpg") center / cover no-repeat;
-      filter: saturate(.78) brightness(.68) contrast(1.1);
-      transform: scale(1.055);
-      transform-origin: center;
-      will-change: transform;
-    }
-
     #scene {
       position: fixed;
       inset: 0;
@@ -459,7 +446,6 @@
   </style>
 </head>
 <body>
-  <div class="environment-plate" aria-hidden="true"></div>
   <canvas id="scene" aria-label="一座可转动视角、靠近并点选器物的 3D 开源档案馆"></canvas>
   <div class="vignette"></div>
   <div class="grain"></div>

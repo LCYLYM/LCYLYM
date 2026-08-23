@@ -470,6 +470,7 @@
 
   function createSSHConsole(project, index, mats) {
     const root = new THREE.Group();
+    const keycaps = [];
     const base = box(2.5, .2, 1.45, mats.lacquer);
     base.position.y = .1;
     root.add(base);
@@ -481,7 +482,9 @@
         const keyMaterial = row === 3 && key === 9 ? mats.red : mats.brassDark;
         const cap = box(.16, .035, .12, keyMaterial, false);
         cap.position.set(-.84 + key * .19, .276, -.24 + row * .17);
+        cap.userData.restY = cap.position.y;
         root.add(cap);
+        keycaps.push(cap);
       }
     }
     const screenHousing = box(2.5, 1.35, .16, mats.lacquer);
@@ -503,11 +506,23 @@
     tag.group.scale.setScalar(.74);
     tag.group.position.set(0, -.24, .78);
     root.add(tag.group);
-    return { root, glow: [screenMaterial].concat(tag.glow), update: (t) => { screenMaterial.emissiveIntensity = screenMaterial.userData.baseIntensity + Math.sin(t * 2.2) * .035; } };
+    return {
+      root,
+      glow: [screenMaterial].concat(tag.glow),
+      update: (t, activity) => {
+        screenMaterial.emissiveIntensity = screenMaterial.userData.baseIntensity + Math.sin(t * 2.2) * .035 + activity * .12;
+        keycaps.forEach((cap, keyIndex) => {
+          const keystroke = Math.max(0, Math.sin(t * 8.4 - keyIndex * .43));
+          cap.position.y = cap.userData.restY - activity * keystroke * .023;
+        });
+      },
+    };
   }
 
   function createQuotaConsole(project, index, mats) {
     const root = new THREE.Group();
+    const dials = [];
+    const ticks = [];
     const base = box(2.65, .34, 1.28, mats.lacquer);
     base.position.y = .17;
     root.add(base);
@@ -539,14 +554,21 @@
     const touch = new THREE.Mesh(new THREE.PlaneGeometry(2.29, .64), touchMaterial);
     touch.position.set(0, .88, -.326);
     root.add(touch);
+    const sweepMaterial = new THREE.MeshBasicMaterial({ color: 0xb8493f, transparent: true, opacity: 0, depthWrite: false });
+    const sweep = new THREE.Mesh(new THREE.PlaneGeometry(.035, .54), sweepMaterial);
+    sweep.position.set(-1.05, .88, -.315);
+    root.add(sweep);
     [-.78, 0, .78].forEach((x, dialIndex) => {
       const dial = cylinder(.12, .12, .08, dialIndex === 1 ? mats.red : mats.brass, 24);
       dial.position.set(x, .39, .42);
       root.add(dial);
+      dials.push(dial);
       const tick = box(.025, .055, .13, mats.bone, false);
       tick.position.set(x, .445, .42);
       tick.rotation.y = dialIndex * .62 - .6;
+      tick.userData.restRotation = tick.rotation.y;
       root.add(tick);
+      ticks.push(tick);
     });
     [-1.02, 1.02].forEach((x) => {
       const hinge = cylinder(.065, .065, .26, mats.brass, 18);
@@ -558,7 +580,17 @@
     tag.group.scale.setScalar(.74);
     tag.group.position.set(0, -.22, .76);
     root.add(tag.group);
-    return { root, glow: [touchMaterial].concat(tag.glow), update: (t) => { touchMaterial.emissiveIntensity = touchMaterial.userData.baseIntensity + Math.sin(t * 1.45) * .05; } };
+    return {
+      root,
+      glow: [touchMaterial].concat(tag.glow),
+      update: (t, activity) => {
+        touchMaterial.emissiveIntensity = touchMaterial.userData.baseIntensity + Math.sin(t * 1.45) * .05 + activity * .08;
+        sweep.position.x = -1.05 + (t * .52 % 1) * 2.1;
+        sweepMaterial.opacity = activity * (.24 + Math.sin(t * 3.2) * .08);
+        dials.forEach((dial, dialIndex) => { dial.rotation.y = t * (.34 + dialIndex * .08) * activity; });
+        ticks.forEach((tick, tickIndex) => { tick.rotation.y = tick.userData.restRotation + Math.sin(t * .9 + tickIndex) * .2 * activity; });
+      },
+    };
   }
 
   function createRecordDrum(project, index, mats) {
@@ -594,7 +626,16 @@
     tag.group.scale.setScalar(.7);
     tag.group.position.set(0, -1.4, .12);
     root.add(tag.group);
-    return { root, glow: [paperMaterial].concat(tag.glow), update: (t) => { reelGroups[0].rotation.z = t * .18; reelGroups[1].rotation.z = -t * .12; } };
+    return {
+      root,
+      glow: [paperMaterial].concat(tag.glow),
+      update: (t, activity) => {
+        reelGroups[0].rotation.z = t * (.18 + activity * .42);
+        reelGroups[1].rotation.z = -t * (.12 + activity * .34);
+        paper.position.y = -.66 + Math.sin(t * 1.35) * .025 * activity;
+        paperMaterial.emissiveIntensity = paperMaterial.userData.baseIntensity + activity * (.06 + Math.max(0, Math.sin(t * 2.7)) * .06);
+      },
+    };
   }
 
   function createGramophone(project, index, mats) {
@@ -619,11 +660,21 @@
     tag.group.scale.setScalar(.7);
     tag.group.position.set(0, -1.18, .2);
     root.add(tag.group);
-    return { root, glow: tag.glow, update: (t) => { record.rotation.y = t * .72; } };
+    return {
+      root,
+      glow: tag.glow,
+      update: (t, activity) => {
+        record.rotation.y = t * (.72 + activity * 1.2);
+        const resonance = 1 + activity * (.018 + Math.sin(t * 4.2) * .009);
+        horn.scale.set(resonance, resonance, resonance);
+        stem.rotation.z = Math.sin(t * 1.1) * .035 * activity;
+      },
+    };
   }
 
   function createOpenBook(project, index, mats) {
     const root = new THREE.Group();
+    const pages = [];
     const stand = box(2.85, .16, .72, mats.lacquer);
     stand.position.y = -1.0;
     root.add(stand);
@@ -651,7 +702,9 @@
       const page = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 1.6), pageMaterial);
       page.position.set(side * .68, 0, .015);
       page.rotation.y = side * -.16;
+      page.userData.restRotation = page.rotation.y;
       root.add(page);
+      pages.push(page);
     });
     const spine = cylinder(.08, .08, 1.78, mats.brassDark, 18);
     root.add(spine);
@@ -659,7 +712,16 @@
     tag.group.scale.setScalar(.67);
     tag.group.position.set(0, -1.35, .08);
     root.add(tag.group);
-    return { root, glow: [pageMaterial].concat(tag.glow), update: () => {} };
+    return {
+      root,
+      glow: [pageMaterial].concat(tag.glow),
+      update: (t, activity) => {
+        pages[0].rotation.y = pages[0].userData.restRotation + activity * (.045 + Math.sin(t * .72) * .018);
+        pages[1].rotation.y = pages[1].userData.restRotation - activity * (.035 + Math.sin(t * .72 + .8) * .014);
+        pages[0].position.z = .015 + activity * Math.max(0, Math.sin(t * .72)) * .018;
+        pages[1].position.z = .015 + activity * Math.max(0, Math.sin(t * .72 + .8)) * .014;
+      },
+    };
   }
 
   function createVideoReels(project, index, mats) {
@@ -695,16 +757,29 @@
     const timecode = new THREE.Mesh(new THREE.PlaneGeometry(1.68, .47), timecodeMaterial);
     timecode.position.set(0, -.7, .18);
     root.add(timecode);
+    const playhead = box(.09, .22, .13, mats.red, false);
+    playhead.position.set(-.7, -.35, .22);
+    root.add(playhead);
     const tag = plaque(project, index, mats);
     tag.group.scale.setScalar(.66);
     tag.group.position.set(0, -1.38, .1);
     root.add(tag.group);
-    return { root, glow: [timecodeMaterial].concat(tag.glow), update: (t) => { reels[0].rotation.z = t * .36; reels[1].rotation.z = -t * .36; } };
+    return {
+      root,
+      glow: [timecodeMaterial].concat(tag.glow),
+      update: (t, activity) => {
+        reels[0].rotation.z = t * (.36 + activity * .7);
+        reels[1].rotation.z = -t * (.36 + activity * .7);
+        playhead.position.x = -.7 + ((Math.sin(t * 1.12) + 1) * .5) * 1.4 * activity;
+        timecodeMaterial.emissiveIntensity = timecodeMaterial.userData.baseIntensity + activity * .1;
+      },
+    };
   }
 
   function createTabStack(project, index, mats) {
     const root = new THREE.Group();
     const glow = [];
+    const panes = [];
     const spine = box(.16, 2.52, .2, mats.brassDark);
     spine.position.set(-1.44, -.05, -.18);
     root.add(spine);
@@ -723,14 +798,28 @@
       screen.position.z = .051;
       pane.add(screen);
       pane.position.set((paneIndex - 1) * .34, (paneIndex - 1) * .2, paneIndex * .18);
+      pane.userData.restX = pane.position.x;
+      pane.userData.restY = pane.position.y;
       root.add(pane);
+      panes.push(pane);
       glow.push(screenMaterial);
     }
     const tag = plaque(project, index, mats);
     tag.group.scale.setScalar(.65);
     tag.group.position.set(0, -1.28, .15);
     root.add(tag.group);
-    return { root, glow: glow.concat(tag.glow), update: (t) => { root.children.slice(3, 6).forEach((pane, paneIndex) => { pane.position.x = (paneIndex - 1) * (.34 + Math.sin(t * .42) * .025); }); } };
+    return {
+      root,
+      glow: glow.concat(tag.glow),
+      update: (t, activity) => {
+        panes.forEach((pane, paneIndex) => {
+          const direction = paneIndex - 1;
+          pane.position.x = pane.userData.restX + direction * activity * (.18 + Math.sin(t * .66) * .025);
+          pane.position.y = pane.userData.restY + Math.abs(direction) * activity * .06;
+          pane.rotation.y = direction * activity * -.14;
+        });
+      },
+    };
   }
 
   function createGuardianPress(project, index, mats) {
@@ -751,10 +840,10 @@
     crossbar.position.set(0, .34, -.16);
     root.add(crossbar);
     const stem = cylinder(.09, .09, 1.25, mats.brass, 20);
-    stem.position.set(0, -.31, -.1);
+    stem.position.set(0, -.05, -.1);
     root.add(stem);
     const stamp = box(.72, .28, .72, mats.red);
-    stamp.position.set(0, -.88, -.02);
+    stamp.position.set(0, -.56, -.02);
     root.add(stamp);
     const policyTexture = displayTexture('RELEASE GUARD', ['secret scan      PASS', 'private path     PASS', 'artifact policy PASS']);
     const policyMaterial = displayMaterial(policyTexture, .34);
@@ -765,7 +854,23 @@
     tag.group.scale.setScalar(.64);
     tag.group.position.set(0, -1.48, .1);
     root.add(tag.group);
-    return { root, glow: [policyMaterial].concat(tag.glow), update: (t) => { stamp.position.y = -.78 + Math.sin(t * .7) * .1; } };
+    const stampRestY = stamp.position.y;
+    const stemRestY = stem.position.y;
+    return {
+      root,
+      glow: [policyMaterial].concat(tag.glow),
+      update: (t, activity) => {
+        const phase = t * .42 % 1;
+        let press = 0;
+        if (phase >= .52 && phase < .66) press = (phase - .52) / .14;
+        else if (phase >= .66 && phase < .78) press = 1;
+        else if (phase >= .78) press = 1 - (phase - .78) / .22;
+        const pressure = Math.max(0, Math.min(1, press)) * activity;
+        stamp.position.y = stampRestY - pressure * .13;
+        stem.position.y = stemRestY - pressure * .13;
+        policyMaterial.emissiveIntensity = policyMaterial.userData.baseIntensity + pressure * .24;
+      },
+    };
   }
 
   function addProject(world, scene, project, index, built, placement) {
@@ -794,6 +899,7 @@
       glow: built.glow || [],
       update: built.update || (() => {}),
       baseScale: scale,
+      activation: 0,
       category: project.category,
       index,
     };
@@ -801,66 +907,58 @@
 
   function addHall(scene, world, mats) {
     const floorMaterial = mats.stone.clone();
-    floorMaterial.transparent = true;
-    floorMaterial.opacity = .2;
-    floorMaterial.depthWrite = false;
+    floorMaterial.transparent = false;
+    floorMaterial.opacity = 1;
+    floorMaterial.depthWrite = true;
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 36), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     floor.position.z = -3.5;
     floor.receiveShadow = true;
-    floor.visible = false;
     scene.add(floor);
 
     const walkMaterial = mats.lacquer.clone();
-    walkMaterial.transparent = true;
-    walkMaterial.opacity = .28;
-    walkMaterial.depthWrite = false;
+    walkMaterial.color.setHex(0x251b15);
+    walkMaterial.transparent = false;
+    walkMaterial.opacity = 1;
+    walkMaterial.depthWrite = true;
     const centralWalk = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 32), walkMaterial);
     centralWalk.rotation.x = -Math.PI / 2;
     centralWalk.position.set(0, .013, -3.25);
     centralWalk.receiveShadow = true;
-    centralWalk.visible = false;
     scene.add(centralWalk);
     [-2.46, 2.46].forEach((x) => {
       const rail = box(.035, .018, 31.5, mats.brassDark, false);
       rail.position.set(x, .025, -3.25);
-      rail.visible = false;
       scene.add(rail);
     });
     for (let x = -10.8; x <= 10.8; x += 2.15) {
       const seam = box(.018, .012, 34, mats.brassDark, false);
       seam.position.set(x, .012, -3.5);
-      seam.visible = false;
       scene.add(seam);
     }
     for (let z = 10; z >= -16; z -= 2.25) {
       const seam = box(25, .012, .018, mats.brassDark, false);
       seam.position.set(0, .013, z);
-      seam.visible = false;
       scene.add(seam);
     }
 
     const backWall = box(18.2, 10.7, .52, mats.shadow, false);
     backWall.position.set(0, 5.15, -13.15);
-    backWall.visible = false;
     scene.add(backWall);
 
     const inkTexture = createInkLandscapeTexture();
     const inkMaterial = new THREE.MeshStandardMaterial({ map: inkTexture, emissive: 0x4f5148, emissiveMap: inkTexture, emissiveIntensity: .075, roughness: 1, metalness: 0 });
     const inkWall = new THREE.Mesh(new THREE.PlaneGeometry(17.35, 9.55), inkMaterial);
     inkWall.position.set(0, 5.08, -12.87);
-    inkWall.visible = false;
     scene.add(inkWall);
 
     [-8.45, 8.45].forEach((x) => {
       const side = box(.38, 10.5, 30.5, mats.shadow, false);
       side.position.set(x, 5.2, -3.1);
-      side.visible = false;
       scene.add(side);
     });
 
     [7.3, 1.2, -4.9, -10.9].forEach((z, frameIndex) => {
-      if (frameIndex > 1) return;
       [-7.72, 7.72].forEach((x) => {
         const column = ornateColumn(frameIndex === 0 ? 9.05 : 8.72, mats);
         column.position.set(x, 0, z);
@@ -875,7 +973,6 @@
     });
 
     [-1, 1].forEach((side) => {
-      if (side) return;
       const sideX = side * 8.04;
       [-1.8, -7.6].forEach((z, screenIndex) => {
         const screenBack = box(.12, 6.0, 4.35, mats.lacquer, false);
@@ -894,16 +991,28 @@
       });
     });
 
-    [-3.15, 3.15].forEach((x, benchIndex) => {
-      const plinth = box(3.0, .34, 1.28, mats.shadow);
-      plinth.position.set(x, .17, -2.0 + benchIndex * .06);
-      scene.add(plinth);
-      const bench = box(3.28, .14, 1.58, mats.lacquer);
-      bench.position.set(x, .42, -2.0 + benchIndex * .06);
-      scene.add(bench);
-      const trim = box(3.08, .04, 1.62, benchIndex ? mats.red : mats.brassDark, false);
-      trim.position.set(x, .33, -2.0 + benchIndex * .06);
+    [-3.32, 3.32].forEach((x, benchIndex) => {
+      const z = -1.55 + benchIndex * .08;
+      const top = box(3.58, .18, 1.76, mats.lacquer);
+      top.position.set(x, 1.67, z);
+      scene.add(top);
+      const trim = box(3.64, .045, 1.82, benchIndex ? mats.red : mats.brass, false);
+      trim.position.set(x, 1.57, z);
       scene.add(trim);
+      [-1.42, 1.42].forEach((legX) => {
+        [-.62, .62].forEach((legZ) => {
+          const leg = cylinder(.105, .16, 1.52, mats.wood, 20);
+          leg.position.set(x + legX, .78, z + legZ);
+          scene.add(leg);
+          const collar = torus(.13, .024, mats.brassDark, 24);
+          collar.rotation.x = Math.PI / 2;
+          collar.position.set(x + legX, 1.36, z + legZ);
+          scene.add(collar);
+        });
+      });
+      const underRail = box(3.02, .1, .18, mats.wood, false);
+      underRail.position.set(x, .52, z + .62);
+      scene.add(underRail);
     });
 
     const shelfSpecs = [
@@ -914,27 +1023,26 @@
     shelfSpecs.forEach(([x, topY, z, width, depth], shelfIndex) => {
       const shelf = box(width, .2, depth, shelfIndex === 4 || shelfIndex === 5 ? mats.brassDark : mats.lacquer);
       shelf.position.set(x, topY - .1, z);
-      shelf.visible = false;
       scene.add(shelf);
       const bracket = box(.16, .8, .55, mats.wood);
       bracket.position.set(x, topY - .5, z - depth * .28);
-      bracket.visible = false;
       scene.add(bracket);
       const shelfLine = box(width - .18, .035, depth + .04, shelfIndex === 1 || shelfIndex === 4 ? mats.red : mats.brass, false);
       shelfLine.position.set(x, topY + .018, z);
-      shelfLine.visible = false;
       scene.add(shelfLine);
     });
 
     const engine = createArchiveEngine(mats);
     engine.root.position.set(0, 4.55, -12.55);
     engine.root.scale.setScalar(.93);
-    engine.root.visible = false;
     scene.add(engine.root);
     world.engine = engine;
 
     const redThreadMaterial = mats.red.clone();
     redThreadMaterial.emissiveIntensity = .12;
+    redThreadMaterial.transparent = true;
+    redThreadMaterial.opacity = .48;
+    redThreadMaterial.depthWrite = false;
     [-6.75, -2.58, 2.58, 6.75].forEach((x, index) => {
       const thread = box(.022, 7.2 - index % 2 * .7, .022, redThreadMaterial, false);
       thread.position.set(x, 6.0, -9.6 + index * .16);
@@ -946,19 +1054,15 @@
     [-6.25, 6.25].forEach((x) => {
       const cord = box(.018, 1.9, .018, mats.brassDark, false);
       cord.position.set(x, 7.62, -3.95);
-      cord.visible = false;
       scene.add(cord);
       const lantern = box(.58, .9, .58, lanternMaterial, false);
       lantern.position.set(x, 6.35, -3.95);
-      lantern.visible = false;
       scene.add(lantern);
       const capTop = box(.78, .08, .78, mats.brassDark, false);
       capTop.position.set(x, 6.82, -3.95);
-      capTop.visible = false;
       scene.add(capTop);
       const capBottom = capTop.clone();
       capBottom.position.y = 5.88;
-      capBottom.visible = false;
       scene.add(capBottom);
     });
   }
@@ -1037,8 +1141,8 @@
       activeProject: null,
       hoveredProject: null,
       views: {
-        overview: { pos: [2.65, 4.3, 8.35], look: [-.2, 3.5, -5.7] },
-        mobileOverview: { pos: [0, 4.15, 12.8], look: [0, 2.42, -3.5] },
+        overview: { pos: [5.45, 4.45, 8.45], look: [-.35, 3.48, -5.65], curve: [.62, .28, .58], duration: 1320 },
+        mobileOverview: { pos: [0, 4.4, 13.8], look: [0, 3.0, -4.65], curve: [0, .36, .72], duration: 1180 },
         agent: { pos: [-3.9, 4.05, 5.15], look: [-3.25, 3.15, -5.15] },
         native: { pos: [3.9, 4.0, 5.05], look: [3.2, 3.0, -5.25] },
         browser: { pos: [4.7, 5.1, 1.55], look: [3.9, 4.65, -9.65] },
@@ -1059,8 +1163,8 @@
       createGuardianPress(projects[7], 7, mats),
     ];
     const placements = [
-      { x: -3.15, z: -2.0, topY: .5, scale: .94, rotationY: .035 },
-      { x: 3.15, z: -1.94, topY: .5, scale: .98, rotationY: -.035 },
+      { x: -3.32, z: -1.55, topY: 1.76, scale: 1.03, rotationY: .035 },
+      { x: 3.32, z: -1.47, topY: 1.76, scale: 1.05, rotationY: -.035 },
       { x: -5.72, z: -5.2, topY: 2.59, scale: .9, rotationY: .08 },
       { x: 5.72, z: -5.2, topY: 2.59, scale: .92, rotationY: -.1 },
       { x: -5.15, z: -8.55, topY: 4.39, scale: .84, rotationY: .06 },
@@ -1071,24 +1175,47 @@
     projects.forEach((project, index) => addProject(world, scene, project, index, relics[index], placements[index]));
 
     world.projectViews = {
-      'ssh-connector-mcp': { pos: [-1.55, 3.3, 4.92], look: [-3.12, 1.5, -1.98] },
-      QuotaBar: { pos: [1.75, 3.12, 4.95], look: [3.12, 1.32, -1.92] },
-      'codex-record-sync': { pos: [-4.5, 4.6, -.2], look: [-5.7, 3.72, -5.15] },
-      'guess-song': { pos: [4.45, 4.45, -.12], look: [5.7, 3.58, -5.15] },
-      'mac-markdown-pad': { pos: [-3.72, 5.75, -3.55], look: [-5.12, 5.18, -8.5] },
-      lqreadervideosync: { pos: [3.72, 5.72, -3.5], look: [5.12, 5.15, -8.5] },
-      'ai-tabs-organizer': { pos: [-2.2, 6.95, -5.45], look: [-3.6, 6.38, -10.72] },
-      'ai-release-guardian': { pos: [2.18, 6.85, -5.3], look: [3.6, 6.28, -10.72] },
+      'ssh-connector-mcp': {
+        pos: [-2.15, 3.35, 1.5], look: [-3.32, 2.56, -1.55],
+        curve: [-1.15, -.35, .65], twist: [.22, .05, .12], lookCurve: [-.12, .06, 0], duration: 1380,
+      },
+      QuotaBar: {
+        pos: [4.55, 3.65, 1.7], look: [3.32, 2.48, -1.47],
+        curve: [1.15, .65, .58], twist: [-.18, .04, .18], lookCurve: [.12, .1, 0], duration: 1420,
+      },
+      'codex-record-sync': {
+        pos: [-4.15, 4.6, -.35], look: [-5.72, 3.72, -5.2],
+        curve: [-1.4, .12, .45], twist: [0, .18, .1], lookCurve: [-.15, 0, 0], duration: 1300,
+      },
+      'guess-song': {
+        pos: [4.15, 4.55, -.15], look: [5.72, 3.58, -5.2],
+        curve: [1.45, .38, .22], twist: [.1, -.16, .38], lookCurve: [.18, .04, 0], duration: 1500,
+      },
+      'mac-markdown-pad': {
+        pos: [-4.15, 6.55, -3.75], look: [-5.15, 5.15, -8.55],
+        curve: [-.35, 1.28, .25], twist: [.55, .08, 0], lookCurve: [0, .28, 0], duration: 1440,
+      },
+      lqreadervideosync: {
+        pos: [4.7, 5.45, -3.55], look: [5.15, 5.12, -8.55],
+        curve: [.78, -.18, .72], twist: [-.52, .18, 0], lookCurve: [.12, -.06, 0], duration: 1320,
+      },
+      'ai-tabs-organizer': {
+        pos: [-2.25, 6.75, -5.35], look: [-3.62, 6.35, -10.75],
+        curve: [-1.15, .72, .22], twist: [.22, -.12, .26], lookCurve: [-.16, .08, 0], duration: 1460,
+      },
+      'ai-release-guardian': {
+        pos: [2.15, 7.55, -5.25], look: [3.62, 6.18, -10.75],
+        curve: [.12, 1.52, .12], twist: [-.55, .05, .24], lookCurve: [.1, .25, 0], duration: 1520,
+      },
     };
 
     addAtmosphere(scene, world);
 
     world.setActive = function (projectId) {
       world.activeProject = projectId;
-      world.redThreads.forEach((thread) => { thread.visible = !projectId; });
       Object.entries(world.projectObjects).forEach(([id, entry]) => {
-        if (projectId) entry.root.visible = id === projectId;
-        entry.root.userData.targetScale = entry.baseScale * (id === projectId ? 1.045 : 1);
+        entry.root.visible = true;
+        entry.root.userData.targetScale = entry.baseScale;
         setGlow(entry, id === projectId ? 'active' : id === world.hoveredProject ? 'hover' : 'base');
       });
     };
@@ -1096,11 +1223,8 @@
     world.setView = function (viewName) {
       world.activeView = viewName;
       Object.values(world.projectObjects).forEach((entry) => {
-        entry.root.visible = viewName === 'overview'
-          ? entry.index < 2
-          : viewName === 'about'
-            ? false
-            : entry.category === viewName;
+        entry.root.visible = true;
+        entry.root.userData.targetScale = entry.baseScale;
       });
     };
 
@@ -1113,16 +1237,20 @@
 
     world.update = function (time, motionEnabled) {
       const t = time * .001;
+      Object.entries(world.projectObjects).forEach(([id, entry]) => {
+        const targetActivation = id === world.activeProject ? 1 : 0;
+        entry.activation += (targetActivation - entry.activation) * (motionEnabled ? .075 : 1);
+        entry.update(t, motionEnabled ? entry.activation : 0);
+        const scale = motionEnabled
+          ? entry.root.scale.x + (entry.root.userData.targetScale - entry.root.scale.x) * .07
+          : entry.root.userData.targetScale;
+        entry.root.scale.setScalar(scale);
+      });
       if (!motionEnabled) return;
       world.engine.moving.position.x = Math.sin(t * .26) * .16;
       world.engine.moving.position.y = .13 + Math.sin(t * .19) * .06;
       world.engine.wheels.forEach((wheel, wheelIndex) => { wheel.rotation.z = t * (wheelIndex ? -.12 : .12); });
       world.engine.root.rotation.y = Math.sin(t * .12) * .009;
-      Object.values(world.projectObjects).forEach((entry) => {
-        entry.update(t);
-        const scale = entry.root.scale.x + (entry.root.userData.targetScale - entry.root.scale.x) * .07;
-        entry.root.scale.setScalar(scale);
-      });
       world.dust.rotation.y = t * .006;
       const rainAttribute = world.rain.geometry.attributes.position;
       for (let i = 0; i < world.rainSpeeds.length; i++) {

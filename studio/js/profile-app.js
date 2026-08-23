@@ -123,17 +123,18 @@
   const camTargetPosition = new THREE.Vector3();
   const camTargetLook = new THREE.Vector3();
   const cameraDirection = new THREE.Vector3();
+  let cameraTransition = null;
 
   function configureRenderer() {
     renderer = new THREE.WebGLRenderer({
       canvas: document.getElementById('scene'),
       antialias: true,
-      alpha: true,
+      alpha: false,
       powerPreference: 'high-performance',
     });
     renderer.setSize(innerWidth, innerHeight);
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, captureMode ? 1.4 : 1.8));
-    renderer.setClearColor(0x070706, 0);
+    renderer.setClearColor(0x070706, 1);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -144,7 +145,7 @@
 
   function configureScene() {
     scene = new THREE.Scene();
-    scene.background = null;
+    scene.background = new THREE.Color(0x070706);
     scene.fog = new THREE.FogExp2(0x070706, .028);
 
     camera = new THREE.PerspectiveCamera(innerWidth < 680 ? 57 : 46, innerWidth / innerHeight, .1, 80);
@@ -219,12 +220,54 @@
   }
 
   function moveCamera(view, options = {}) {
-    camTargetPosition.set(...view.pos);
-    camTargetLook.set(...view.look);
-    if (options.frameRight && innerWidth > 850) camTargetLook.x += 1.05;
+    const nextPosition = new THREE.Vector3(...view.pos);
+    const nextLook = new THREE.Vector3(...view.look);
+    if (options.frameRight && innerWidth > 850) nextLook.x += 1.05;
+    camTargetPosition.copy(nextPosition);
+    camTargetLook.copy(nextLook);
+
+    if (reducedMotion) {
+      camPosition.copy(nextPosition);
+      camLook.copy(nextLook);
+      cameraTransition = null;
+    } else {
+      const direction = Math.sign(nextPosition.x - camPosition.x) || 1;
+      cameraTransition = {
+        startedAt: performance.now(),
+        duration: view.duration || 1240,
+        fromPosition: camPosition.clone(),
+        fromLook: camLook.clone(),
+        toPosition: nextPosition,
+        toLook: nextLook,
+        curve: new THREE.Vector3(...(view.curve || [direction * .42, .24, .46])),
+        twist: new THREE.Vector3(...(view.twist || [0, 0, 0])),
+        lookCurve: new THREE.Vector3(...(view.lookCurve || [0, 0, 0])),
+      };
+    }
     dragYaw = 0;
     dragPitch = 0;
     targetDolly = 0;
+  }
+
+  function updateCameraTransition(time) {
+    if (!cameraTransition) return;
+    const transition = cameraTransition;
+    const progress = THREE.MathUtils.clamp((time - transition.startedAt) / transition.duration, 0, 1);
+    const eased = progress * progress * (3 - 2 * progress);
+    const arc = Math.sin(Math.PI * eased);
+    const twist = Math.sin(Math.PI * 2 * eased) * arc;
+
+    camPosition.lerpVectors(transition.fromPosition, transition.toPosition, eased);
+    camPosition.addScaledVector(transition.curve, arc);
+    camPosition.addScaledVector(transition.twist, twist);
+    camLook.lerpVectors(transition.fromLook, transition.toLook, eased);
+    camLook.addScaledVector(transition.lookCurve, arc);
+
+    if (progress >= 1) {
+      camPosition.copy(transition.toPosition);
+      camLook.copy(transition.toLook);
+      cameraTransition = null;
+    }
   }
 
   function viewFor(viewName) {
@@ -410,8 +453,7 @@
     pointerX += (pointerTargetX - pointerX) * .035;
     pointerY += (pointerTargetY - pointerY) * .035;
     dolly += (targetDolly - dolly) * .055;
-    camPosition.lerp(camTargetPosition, .038);
-    camLook.lerp(camTargetLook, .038);
+    updateCameraTransition(time);
 
     const captureOrbit = captureMode && !reducedMotion ? Math.sin(time * .00033) * .34 : 0;
     const position = camPosition.clone();
@@ -424,13 +466,6 @@
     look.y -= pointerY * .1 + dragPitch * 4.1;
     camera.position.copy(position);
     camera.lookAt(look);
-
-    const plate = document.querySelector('.environment-plate');
-    if (plate) {
-      const plateX = -pointerX * 10 - captureOrbit * 2.5;
-      const plateY = pointerY * 5;
-      plate.style.transform = `scale(1.055) translate3d(${plateX}px, ${plateY}px, 0)`;
-    }
 
     world.update(time, !reducedMotion);
     renderer.render(scene, camera);
