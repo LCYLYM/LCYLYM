@@ -455,7 +455,7 @@
     dolly += (targetDolly - dolly) * .055;
     updateCameraTransition(time);
 
-    const captureOrbit = captureMode && !reducedMotion ? Math.sin(time * .00033) * .34 : 0;
+    const captureOrbit = captureMode && !reducedMotion ? Math.sin(time * Math.PI * 2 / 3000) * .34 : 0;
     const position = camPosition.clone();
     const look = camLook.clone();
     cameraDirection.copy(position).sub(look).normalize();
