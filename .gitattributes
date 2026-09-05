@@ -1,0 +1,3 @@
+studio/vendor/** linguist-vendored -whitespace
+studio/fonts/** linguist-vendored -whitespace
+assets/studio-hero.* linguist-generated
