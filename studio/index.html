@@ -10,7 +10,7 @@
       name="description"
       content="生鱼安乐 / LCYLYM 的交互作品集。走进水墨山水，探索 SSH 与 Agent 基础设施、协议网关、DSH 社区插件、多人游戏和原生应用。"
     />
-    <meta name="theme-color" content="#d1d8d0" />
+    <meta name="theme-color" content="#f3f1e9" />
     <title>生鱼安乐 · 山水之间</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="styles/landscape.css" />
@@ -52,8 +52,8 @@
     </header>
     <main id="experience">
       <div id="place-labels" aria-label="场景中的项目"></div>
+      <div id="mechanism-labels" aria-label="场景中的机制标注"></div>
       <section class="intro" id="intro" aria-labelledby="name">
-        <p class="eyebrow">INDEPENDENT WORKS · LCYLYM</p>
         <div class="name-composition">
           <h1 id="name">生鱼<br />安乐<span class="name-dot">。</span></h1>
           <span class="vertical-note" data-i18n="margin"
@@ -80,18 +80,23 @@
         <button class="back quiet" id="back" data-i18n="back">
           ← 回到山水
         </button>
-        <p class="eyebrow" id="chapter-meta"></p>
+        <p class="chapter-project" id="chapter-project"></p>
         <h2 id="chapter-title"></h2>
         <p class="chapter-subtitle" id="chapter-subtitle"></p>
-        <p class="chapter-description" id="chapter-description"></p>
-        <dl id="chapter-details"></dl>
+        <nav id="mechanism-steps" aria-label="工程机制图解"></nav>
+        <section id="step-reading" aria-live="polite">
+          <p class="step-code" id="step-code"></p>
+          <p id="step-description"></p>
+        </section>
+        <p class="eyebrow" id="chapter-meta"></p>
         <div class="source-links" id="source-links"></div>
         <div class="experiment">
-          <p id="experiment-caption"></p>
           <button id="experiment-button"></button
           ><output id="experiment-result" aria-live="polite"></output>
         </div>
-        <div class="related" id="related"></div>
+        <button id="study-open" class="study-open" data-i18n="studyOpen">
+          展开工程手记 ↗
+        </button>
       </section>
       <p
         id="scene-status"
@@ -112,6 +117,7 @@
         <button id="previous" aria-label="上一个项目">←</button
         ><button id="next" aria-label="下一个项目">→</button
         ><button id="motion" data-i18n="motion">暂停动效</button>
+        <button id="quality" aria-label="画质模式">画质：自动</button>
       </div>
     </footer>
     <p class="gesture-note" data-i18n="gesture">
@@ -128,6 +134,10 @@
       <p class="index-intro" data-i18n="indexIntro">
         项目大小不同，值得讲的部分也不同。点进源码，看具体的设计与取舍。
       </p>
+      <label class="index-search"
+        ><span data-i18n="search">查找项目</span
+        ><input id="project-search" type="search" autocomplete="off"
+      /></label>
       <div id="project-index"></div>
       <section class="private-work">
         <p class="eyebrow">ONGOING EXPLORATIONS</p>
@@ -141,6 +151,13 @@
         这些项目由我提出需求、设计、集成和持续迭代，也大量使用 AI
         编程工具。每个项目的能力与限制，以源码和各自文档为准。
       </p>
+    </dialog>
+    <dialog id="study-dialog" aria-labelledby="study-title">
+      <div class="study-toolbar">
+        <span>LCYLYM / ENGINEERING NOTES</span
+        ><button id="study-close" data-i18n="studyClose">回到现场 ×</button>
+      </div>
+      <article id="study-content"></article>
     </dialog>
     <noscript
       ><section class="static-reading">

@@ -1,5 +1,7 @@
 import * as THREE from "../vendor/three.module.js";
 import { places } from "./projects.js";
+import { inkMaterial, createInkPass } from "./ink-renderer.js";
+import { studies } from "./studies.js";
 
 const TAU = Math.PI * 2;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -40,28 +42,30 @@ function fbm(x, z) {
 export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: false,
     alpha: false,
-    powerPreference: "high-performance",
-    preserveDrawingBuffer: true,
+    powerPreference: "default",
+    preserveDrawingBuffer: false,
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.setClearColor("#c5d0c6");
+  renderer.setClearColor("#f2f0e9");
+  renderer.info.autoReset = false;
+  const inkPass = createInkPass(renderer);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = false;
   renderer.shadowMap.needsUpdate = true;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(39, 1, 0.1, 350);
-  const fog = new THREE.Color("#c4d0c7");
-  scene.fog = new THREE.Fog("#c4d0c7", 32, 145);
-  scene.add(new THREE.HemisphereLight("#dce8da", "#263e32", 1.7));
-  const sunlight = new THREE.DirectionalLight("#fff5d7", 2.7);
+  const fog = new THREE.Color("#f2f0e9");
+  scene.fog = new THREE.Fog("#f2f0e9", 29, 112);
+  scene.add(new THREE.HemisphereLight("#ffffff", "#545454", 1.6));
+  const sunlight = new THREE.DirectionalLight("#ffffff", 2.1);
   sunlight.position.set(-20, 38, 24);
   sunlight.target.position.set(-3, 0, 0);
   scene.add(sunlight, sunlight.target);
   sunlight.castShadow = true;
-  sunlight.shadow.mapSize.set(2048, 2048);
+  sunlight.shadow.mapSize.set(1024, 1024);
   Object.assign(sunlight.shadow.camera, {
     left: -43,
     right: 43,
@@ -72,49 +76,17 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   });
   sunlight.shadow.bias = -0.0002;
   sunlight.shadow.normalBias = 0.055;
-  const makeMat = (color, texture = 1) => {
-    const material = new THREE.MeshStandardMaterial({
-      color,
-      roughness: 1,
-      metalness: 0,
-      side: THREE.DoubleSide,
-    });
-    material.onBeforeCompile = (shader) => {
-      shader.vertexShader = shader.vertexShader
-        .replace(
-          "#include <common>",
-          "#include <common>\nvarying vec3 vInkWorld;",
-        )
-        .replace(
-          "#include <worldpos_vertex>",
-          `#include <worldpos_vertex>\nvec4 inkWorld=vec4(transformed,1.);\n#ifdef USE_INSTANCING\ninkWorld=instanceMatrix*inkWorld;\n#endif\nvInkWorld=(modelMatrix*inkWorld).xyz;`,
-        );
-      shader.fragmentShader = shader.fragmentShader.replace(
-        "#include <common>",
-        `#include <common>\nvarying vec3 vInkWorld;\nfloat inkHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\nfloat inkNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(inkHash(i),inkHash(i+vec2(1,0)),f.x),mix(inkHash(i+vec2(0,1)),inkHash(i+1.),f.x),f.y);}`,
-      );
-      shader.fragmentShader = shader.fragmentShader.replace(
-        "#include <color_fragment>",
-        `#include <color_fragment>\nfloat wash=inkNoise(vInkWorld.xz*1.4+vInkWorld.yy*.16);\nfloat fibers=inkNoise(vInkWorld.xy*vec2(16.,1.8)+wash*4.);\nfloat granule=inkHash(gl_FragCoord.xy);\ndiffuseColor.rgb*=mix(1.,.54+wash*.36+fibers*.27+granule*.13,${texture.toFixed(1)});`,
-      );
-      shader.fragmentShader = shader.fragmentShader.replace(
-        "#include <opaque_fragment>",
-        `outgoingLight=floor(outgoingLight*24.+granule*.55)/24.;\n#include <opaque_fragment>`,
-      );
-    };
-    material.customProgramCacheKey = () => `ink-${texture}`;
-    return material;
-  };
+  const makeMat = inkMaterial;
   const mat = {
-    stone: makeMat("#828985"),
-    pale: makeMat("#c9ccbf"),
-    dark: makeMat("#222a27"),
-    roof: makeMat("#343c37"),
-    wood: makeMat("#535b51"),
-    pine: makeMat("#161e1b"),
-    foliage: makeMat("#252d29"),
-    moss: makeMat("#666e60"),
-    paper: makeMat("#eaead6"),
+    stone: makeMat("#9b9b9b"),
+    pale: makeMat("#dededb"),
+    dark: makeMat("#343434"),
+    roof: makeMat("#444444"),
+    wood: makeMat("#737373"),
+    pine: makeMat("#303030"),
+    foliage: makeMat("#484848"),
+    moss: makeMat("#8e8e8e"),
+    paper: makeMat("#f4f3ef"),
     red: makeMat("#ae4b34", 0),
     signal: new THREE.MeshBasicMaterial({ color: "#d0764c" }),
     jade: new THREE.MeshBasicMaterial({ color: "#8bbcb1" }),
@@ -128,6 +100,40 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   };
   const cube = geo("cube", () => new THREE.BoxGeometry(1, 1, 1));
   const sphere = geo("sphere", () => new THREE.SphereGeometry(1, 12, 8));
+  // An ink-loaded brush stamp for pine needles. The instanced marks occupy
+  // real 3D branch positions and have an irregular, open silhouette.
+  const brushCanvas = document.createElement("canvas");
+  brushCanvas.width = 128;
+  brushCanvas.height = 64;
+  const brush = brushCanvas.getContext("2d"),
+    brushRandom = rng(428);
+  for (let i = 0; i < 95; i++) {
+    const y = 12 + brushRandom() * 40,
+      x = 14 + brushRandom() * 26;
+    brush.strokeStyle = `rgba(22,27,31,${0.12 + brushRandom() * 0.52})`;
+    brush.lineWidth = 0.45 + brushRandom() * 2;
+    brush.beginPath();
+    brush.moveTo(x, y);
+    brush.bezierCurveTo(
+      45,
+      y - 8,
+      80,
+      y + 5,
+      97 + brushRandom() * 20,
+      y - 4 + brushRandom() * 8,
+    );
+    brush.stroke();
+  }
+  const brushMap = new THREE.CanvasTexture(brushCanvas);
+  brushMap.colorSpace = THREE.SRGBColorSpace;
+  const needleMat = new THREE.MeshBasicMaterial({
+    map: brushMap,
+    transparent: true,
+    alphaTest: 0.08,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    color: 0xffffff,
+  });
   function mesh(g, m, parent, pos, scale) {
     const o = new THREE.Mesh(g, m);
     o.castShadow = !m.transparent;
@@ -165,14 +171,18 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
       position,
     );
   }
+  const lineMaterials = new Map();
   function line(parent, points, color = "#668479", opacity = 0.6) {
     const g = new THREE.BufferGeometry().setFromPoints(
       points.map((p) => (Array.isArray(p) ? V(...p) : p)),
     );
-    const o = new THREE.Line(
-      g,
-      new THREE.LineBasicMaterial({ color, transparent: true, opacity }),
-    );
+    const key = `${color}/${opacity}`;
+    if (!lineMaterials.has(key))
+      lineMaterials.set(
+        key,
+        new THREE.LineBasicMaterial({ color, transparent: true, opacity }),
+      );
+    const o = new THREE.Line(g, lineMaterials.get(key));
     parent.add(o);
     return o;
   }
@@ -206,7 +216,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     return inst;
   }
   function stone(parent, x, y, z, sx, sy, sz, seed = 0) {
-    const g = new THREE.SphereGeometry(1, 28, 22),
+    const g = new THREE.SphereGeometry(1, 16, 12),
       a = g.attributes.position;
     for (let i = 0; i < a.count; i++) {
       const px = a.getX(i),
@@ -225,8 +235,8 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   }
   function island(parent, x, z, rx, rz, top, seed) {
     // A continuous closed radial landform: level walking surface, stratified cliff and tapered foot.
-    const rings = 24,
-      segments = 112,
+    const rings = 18,
+      segments = 64,
       verts = [],
       indices = [];
     for (let j = 0; j <= rings; j++) {
@@ -288,7 +298,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     }
   }
   function mountain(x, z, radius, height, seed) {
-    const g = new THREE.PlaneGeometry(radius * 2, radius * 2, 100, 100);
+    const g = new THREE.PlaneGeometry(radius * 2, radius * 2, 52, 52);
     g.rotateX(-Math.PI / 2);
     const p = g.attributes.position;
     const seeds = rng(seed),
@@ -377,7 +387,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
         height * 0.018,
         mat.pine,
       );
-      for (let k = 0; k < 85; k++) {
+      for (let k = 0; k < 52; k++) {
         const th = localRng() * TAU,
           r = Math.sqrt(localRng()) * reach * 0.57;
         leaves.push({
@@ -397,15 +407,22 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     }
     batch(
       g,
-      geo("foliage", () => new THREE.IcosahedronGeometry(1, 1)),
-      mat.foliage,
-      leaves,
+      geo("foliage", () => new THREE.PlaneGeometry(2, 2)),
+      needleMat,
+      leaves.map((leaf) => ({
+        p: leaf.p,
+        s: [leaf.s[0] * 1.8, leaf.s[2] * 1.4, 1],
+        r: [-Math.PI * 0.37, leaf.r[1], leaf.r[2]],
+      })),
     );
     return g;
   }
   function roof(parent, width, depth, height, y, material = mat.roof) {
-    const nx = 48,
-      nz = 24,
+    const canopy = new THREE.Group();
+    parent.add(canopy);
+    parent = canopy;
+    const nx = 32,
+      nz = 16,
       vertices = [],
       idx = [];
     const roofY = (x, z) =>
@@ -431,15 +448,15 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     g.computeVertexNormals();
     mesh(g, material, parent);
     // Tile ribs follow the curved roof surface and have real thickness.
-    for (let i = 0; i <= Math.round(width / 0.16); i++) {
-      const x = (i / Math.round(width / 0.16)) * 2 - 1;
+    for (let i = 0; i <= Math.round(width / 0.25); i++) {
+      const x = (i / Math.round(width / 0.25)) * 2 - 1;
       const pts = [];
       for (let j = 0; j <= 32; j++) {
         const z = (j / 32) * 2 - 1;
         pts.push([x * width * 0.5, roofY(x, z) + 0.035, z * depth * 0.5]);
       }
       const c = new THREE.CatmullRomCurve3(pts.map((p) => V(...p)));
-      mesh(new THREE.TubeGeometry(c, 32, 0.027, 4, false), mat.dark, parent);
+      mesh(new THREE.TubeGeometry(c, 16, 0.023, 3, false), mat.dark, parent);
     }
     for (const side of [-1, 1]) {
       const pts = [];
@@ -467,6 +484,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
         0.1,
         mat.dark,
       );
+    return canopy;
   }
   function pavilion(parent, width, depth, y, h, roofHeight = 1.4) {
     box(parent, [0, y - 0.15, 0], [width, 0.3, depth], mat.pale);
@@ -502,7 +520,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
           mat.wood,
         );
     }
-    roof(parent, width * 1.28, depth * 1.4, roofHeight, y + h);
+    return roof(parent, width * 1.28, depth * 1.4, roofHeight, y + h);
   }
   function node(id, at) {
     const g = new THREE.Group();
@@ -563,7 +581,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     vertexShader: `varying vec3 vP;void main(){vec4 w=modelMatrix*vec4(position,1.);vP=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
     fragmentShader: `
     uniform float uTime;uniform float uRipple;uniform vec3 uFog;varying vec3 vP;
-    void main(){float wave=sin(vP.x*.42+vP.z*.72+uTime*.15)+sin(vP.x*1.6-vP.z*.3+uTime*.18)*.34;float line=pow(abs(sin(vP.z*2.4+wave*.6)),26.);vec3 col=mix(vec3(.22,.26,.25),vec3(.38,.43,.39),line*.18+.22);float dist=length(vP.xz-vec2(-10.,10.));float age=uTime-uRipple;float ring=exp(-pow((dist-age*3.)*3.,2.))*step(0.,age)*step(age,8.);col+=vec3(.15,.08,.03)*ring;float fog=1.-exp(-pow(length(cameraPosition-vP)*.009,1.8));col=mix(col,uFog,fog);gl_FragColor=vec4(col,1.);\n#include <colorspace_fragment>\n}`,
+    void main(){float wave=sin(vP.x*.42+vP.z*.72+uTime*.15)+sin(vP.x*1.6-vP.z*.3+uTime*.18)*.34;float line=pow(abs(sin(vP.z*2.4+wave*.6)),36.);float stroke=line*smoothstep(.4,.9,sin(vP.x*.8+wave)*.5+.5);vec3 col=vec3(.83,.827,.807)-stroke*.055;float dist=length(vP.xz-vec2(-10.,10.));float age=uTime-uRipple;float ring=exp(-pow((dist-age*3.)*3.,2.))*step(0.,age)*step(age,8.);col-=vec3(.25,.3,.31)*ring;float fog=1.-exp(-pow(length(cameraPosition-vP)*.009,1.8));col=mix(col,uFog,fog);gl_FragColor=vec4(col,1.);}`,
     side: THREE.DoubleSide,
   });
   const lake = mesh(
@@ -856,7 +874,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   };
   // Native applications: an open writing pavilion with paired curved pages.
   const desk = node("desk", [7, 1.35, 6]);
-  pavilion(desk, 5.1, 3.8, 0, 3.1, 1.25);
+  const deskCanopy = pavilion(desk, 5.1, 3.8, 0, 3.1, 1.25);
   box(desk, [0, 0.9, 0.35], [2.9, 0.16, 1.7], mat.dark);
   for (const x of [-1, 1])
     for (const z of [-0.3, 1]) box(desk, [x, 0.44, z], [0.11, 0.9, 0.11]);
@@ -906,10 +924,12 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   pine(-19, 1, -4, 7, 36, -1);
   pine(10, 2, -15, 8, 52, 1);
   pine(-7, 1.8, -4, 5.8, 93, -1);
-  pine(11, 1, 7, 5.7, 123, 1);
+  const writingPine = pine(11, 1, 7, 5.7, 123, 1);
   pine(-15, 0.6, 11, 4.8, 189, -1);
-  pine(-20, -1, 17, 17, 581, 1);
-  pine(35, -2, -3, 15, 767, -1);
+  const framingTrees = [
+    pine(-20, -1, 17, 17, 581, 1),
+    pine(35, -2, -3, 15, 767, -1),
+  ];
   // Slender meadow strokes avoid the rounded bushes of a toy diorama.
   const grasses = [];
   for (let i = 0; i < 420; i++) {
@@ -945,6 +965,14 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     birds.push({ bird, wings, phase: i * 1.8 });
   }
   places.forEach((p) => (anchors[p.id] = V(...p.anchor)));
+  const markers = new THREE.Group();
+  scene.add(markers);
+  const mechanismRoute = new THREE.Group();
+  scene.add(mechanismRoute);
+  const markerDots = Array.from({ length: 3 }, () =>
+    mesh(sphere, mat.red, markers, [0, 0, 0], [0.11, 0.11, 0.11]),
+  );
+  markers.visible = false;
   // Merge fixed pieces within each scene node. Animated meshes and hit-test
   // ownership remain separate; detailed tilework no longer costs a draw per rib.
   const animatedMeshes = new Set([
@@ -953,6 +981,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     circuit,
     ...lanterns,
     ...papers,
+    ...markerDots,
     ...birds.flatMap((b) => b.wings),
   ]);
   const parents = [];
@@ -1023,6 +1052,35 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
       geometry.computeBoundingSphere();
       mesh(geometry, group[0].material, parent);
     }
+    const strokeGroups = new Map();
+    for (const child of parent.children) {
+      if (!child.isLine || child.isLineSegments) continue;
+      const key = child.material.uuid;
+      if (!strokeGroups.has(key)) strokeGroups.set(key, []);
+      strokeGroups.get(key).push(child);
+    }
+    for (const strokes of strokeGroups.values()) {
+      if (strokes.length < 2) continue;
+      const positions = [],
+        point = V(0, 0, 0);
+      for (const stroke of strokes) {
+        stroke.updateMatrix();
+        const p = stroke.geometry.attributes.position;
+        for (let i = 1; i < p.count; i++)
+          for (const index of [i - 1, i]) {
+            point.fromBufferAttribute(p, index).applyMatrix4(stroke.matrix);
+            positions.push(point.x, point.y, point.z);
+          }
+        parent.remove(stroke);
+        stroke.geometry.dispose();
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(positions, 3),
+      );
+      parent.add(new THREE.LineSegments(geometry, strokes[0].material));
+    }
   }
   const raycaster = new THREE.Raycaster(),
     pointer = new THREE.Vector2(),
@@ -1031,6 +1089,14 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     height = 1,
     mobile = false,
     selected = null,
+    stage = 0,
+    reading = false,
+    disposed = false,
+    quality = "auto",
+    pixelRatio = 1,
+    frames = 0,
+    paintMs = 0,
+    slowFrames = 0,
     paused = matchMedia("(prefers-reduced-motion: reduce)").matches,
     hidden = document.hidden;
   let time = 0,
@@ -1049,38 +1115,127 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     let pos = V(...(p ? p.camera : overview.camera)),
       target = V(...(p ? p.target : overview.target));
     if (mobile) {
-      pos = target.clone().add(pos.clone().sub(target).multiplyScalar(1.5));
-      target.y += p ? -5 : 3.5;
-      target.x -= p ? 3 : 1.5;
+      if (p) {
+        const relative = pos.clone().sub(target).multiplyScalar(1.15);
+        target = V(...p.position).add(V(0, 3, 0));
+        pos = target.clone().add(relative);
+      } else {
+        pos = target.clone().add(pos.clone().sub(target).multiplyScalar(1.5));
+        target.y += 3.5;
+        target.x -= 1.5;
+      }
     }
     return { pos, target };
   }
   function focus(id, immediate = false) {
     selected = id;
+    stage = 0;
+    deskCanopy.visible = id !== "desk";
+    writingPine.visible = id !== "desk";
+    markers.visible = Boolean(id);
+    if (mobile && id)
+      camera.setViewOffset(width, height, 0, height * 0.23, width, height);
+    else camera.clearViewOffset();
+    for (const child of [...mechanismRoute.children]) {
+      mechanismRoute.remove(child);
+      child.geometry.dispose();
+      child.material.dispose();
+    }
+    if (
+      id &&
+      studies[places.find((p) => p.id === id).project].steps.length > 1
+    ) {
+      const steps = studies[places.find((p) => p.id === id).project].steps;
+      const curve = new THREE.CatmullRomCurve3(steps.map((s) => V(...s.at)));
+      const path = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(curve.getPoints(48)),
+        new THREE.LineDashedMaterial({
+          color: "#a44736",
+          transparent: true,
+          opacity: 0.55,
+          dashSize: 0.13,
+          gapSize: 0.09,
+        }),
+      );
+      path.computeLineDistances();
+      mechanismRoute.add(path);
+    }
+    if (id)
+      studies[places.find((p) => p.id === id).project].steps.forEach((s, i) => {
+        if (!markerDots[i])
+          markerDots.push(
+            mesh(sphere, mat.red, markers, [0, 0, 0], [0.065, 0.065, 0.065]),
+          );
+        markerDots[i].position.set(...s.at);
+        markerDots[i].scale.setScalar(i === stage ? 0.16 : 0.065);
+      });
+    markerDots.forEach((dot, i) => {
+      dot.visible =
+        Boolean(id) &&
+        i < studies[places.find((p) => p.id === id).project].steps.length;
+    });
     const p = pose(id),
       place = places.find((p) => p.id === id);
     offset = { x: 0, y: 0 };
     wantedOffset = { x: 0, y: 0 };
     transition = {
       start: performance.now(),
-      duration: paused || immediate ? 0 : 1550,
+      duration: paused || immediate ? 0 : 1100,
       from: currentPos.clone(),
       to: p.pos,
       fromTarget: currentTarget.clone(),
       toTarget: p.target,
       arc: V(...(place ? place.arc : [0, 5, 4])),
     };
+    wake();
+  }
+  function setStep(index, immediate = false) {
+    if (!selected) return;
+    const study = studies[places.find((p) => p.id === selected).project];
+    if (!study.steps[index]) return;
+    stage = index;
+    deskCanopy.visible = selected !== "desk" || index === 2;
+    markerDots.forEach((dot, i) =>
+      dot.scale.setScalar(i === index ? 0.16 : 0.065),
+    );
+    const p = pose(selected);
+    const shift = V(...study.steps[index].at)
+      .sub(V(...study.steps[0].at))
+      .multiplyScalar(0.22);
+    transition = {
+      start: performance.now(),
+      duration: paused || immediate ? 0 : 600,
+      from: currentPos.clone(),
+      to: p.pos.add(shift),
+      fromTarget: currentTarget.clone(),
+      toTarget: p.target.add(shift),
+      arc: V(0, 0, 0),
+    };
+    pulseStart = time;
+    wake();
+  }
+  function setSize() {
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(width, height, false);
+    inkPass.resize(
+      Math.round(width * pixelRatio),
+      Math.round(height * pixelRatio),
+    );
   }
   function resize() {
     width = canvas.clientWidth;
     height = canvas.clientHeight;
     mobile = width <= 820;
-    renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 1.65));
-    renderer.setSize(width, height, false);
+    framingTrees.forEach((tree) => (tree.visible = !mobile));
+    pixelRatio =
+      quality === "eco" ? 0.8 : Math.min(devicePixelRatio, mobile ? 1 : 1.25);
+    setSize();
     camera.aspect = width / height;
     camera.fov = mobile ? 44 : 39;
     camera.updateProjectionMatrix();
+    const active = stage;
     focus(selected, true);
+    if (selected && active) setStep(active, true);
   }
   function projectLabels() {
     return places.map((p) => {
@@ -1098,9 +1253,32 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
       };
     });
   }
+  function projectAnnotations() {
+    if (!selected) return [];
+    return studies[places.find((p) => p.id === selected).project].steps.map(
+      (step, index) => {
+        projected.set(...step.at).project(camera);
+        return {
+          index,
+          x: (projected.x * 0.5 + 0.5) * width,
+          y: (-0.5 * projected.y + 0.5) * height,
+          visible:
+            projected.z > -1 && projected.z < 1 && Math.abs(projected.x) < 0.85,
+        };
+      },
+    );
+  }
+  function wake() {
+    if (!raf && !hidden && !reading && !disposed)
+      raf = requestAnimationFrame(render);
+  }
   function render(now) {
-    raf = requestAnimationFrame(render);
-    if (hidden) return;
+    raf = 0;
+    if (hidden || reading || disposed) return;
+    if (!transition && !drag && !paused && now - last < 31) {
+      wake();
+      return;
+    }
     const dt = clamp((now - last) / 1000, 0, 0.04);
     last = now;
     if (!paused) time += dt;
@@ -1126,9 +1304,13 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     camera.lookAt(currentTarget);
     camera.updateMatrixWorld();
     const pulse = Math.max(0, 1 - (time - pulseStart) / 5);
-    Object.entries(motions).forEach(([id, animate]) =>
-      animate(time, selected === id ? pulse : 0),
-    );
+    Object.entries(motions).forEach(([id, animate]) => {
+      if (!selected || id === selected)
+        animate(
+          time + (selected === id ? stage * 2 : 0),
+          selected === id ? pulse : 0,
+        );
+    });
     waterUniforms.uTime.value = time;
     birds.forEach(({ bird, wings, phase }, i) => {
       bird.position.set(
@@ -1146,13 +1328,33 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
       (l, i) =>
         (l.material.opacity = 0.13 + Math.sin(time * 0.7 + i * 0.6) * 0.05),
     );
-    renderer.render(scene, camera);
+    const paintStart = performance.now();
+    inkPass.render(scene, camera);
+    paintMs = paintMs * 0.9 + (performance.now() - paintStart) * 0.1;
+    frames++;
+    if (quality === "auto" && paintMs > 24 && pixelRatio > 0.85) slowFrames++;
+    else slowFrames = Math.max(0, slowFrames - 1);
+    if (slowFrames > 45) {
+      pixelRatio = Math.max(0.85, pixelRatio - 0.15);
+      setSize();
+      slowFrames = 0;
+    }
     onFrame?.({
       labels: projectLabels(),
+      annotations: projectAnnotations(),
       time,
       drawCalls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
     });
+    if (
+      !paused ||
+      transition ||
+      drag ||
+      Math.abs(offset.x - wantedOffset.x) +
+        Math.abs(offset.y - wantedOffset.y) >
+        0.001
+    )
+      wake();
   }
   function pointerDown(e) {
     if (e.button !== 0) return;
@@ -1164,6 +1366,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
       moved: false,
     };
     canvas.setPointerCapture(e.pointerId);
+    wake();
     document.body.classList.add("dragging");
   }
   function pointerMove(e) {
@@ -1173,6 +1376,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     if (Math.abs(dx) + Math.abs(dy) > 7) drag.moved = true;
     wantedOffset.x = clamp(drag.baseX - dx * 0.002, -0.4, 0.4);
     wantedOffset.y = clamp(drag.baseY + dy * 0.016, -3, 4);
+    wake();
   }
   function pointerUp(e) {
     if (!drag) return;
@@ -1182,7 +1386,14 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     if (didMove) return;
     pointer.set((e.clientX / width) * 2 - 1, (-e.clientY / height) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(scene.children, true);
+    const hits = raycaster
+      .intersectObjects(scene.children, true)
+      .filter(
+        (h) =>
+          h.object.isMesh &&
+          !h.object.material.transparent &&
+          !markerDots.includes(h.object),
+      );
     if (hits.length) {
       let o = hits[0].object;
       while (o && !o.userData.place) o = o.parent;
@@ -1200,6 +1411,10 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   const visibility = () => {
     hidden = document.hidden;
     last = performance.now();
+    if (hidden) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    } else wake();
   };
   document.addEventListener("visibilitychange", visibility);
   const lost = (e) => {
@@ -1210,11 +1425,29 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
   canvas.addEventListener("webglcontextlost", lost);
   window.addEventListener("resize", resize);
   resize();
-  raf = requestAnimationFrame(render);
+  wake();
   return {
     focus,
+    setStep,
+    setReading(value) {
+      reading = value;
+      if (reading) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else {
+        last = performance.now();
+        wake();
+      }
+    },
+    setQuality(value) {
+      quality = value === "eco" ? "eco" : "auto";
+      resize();
+    },
     setPaused(value) {
       paused = value;
+      if (value && transition) transition.duration = 0;
+      last = performance.now();
+      wake();
       return paused;
     },
     get paused() {
@@ -1223,6 +1456,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     trigger() {
       pulseStart = time;
       waterUniforms.uRipple.value = time;
+      wake();
       return time;
     },
     snapshot() {
@@ -1230,6 +1464,12 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
         place: selected,
         time,
         paused,
+        reading,
+        frames,
+        stage,
+        quality,
+        pixelRatio,
+        paintMs: Math.round(paintMs * 100) / 100,
         camera: camera.position.toArray(),
         target: currentTarget.toArray(),
         calls: renderer.info.render.calls,
@@ -1238,6 +1478,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
     },
     captureAt(t) {
       cancelAnimationFrame(raf);
+      raf = 0;
       paused = true;
       time = t;
       offset.x = Math.sin((t * TAU) / 4) * 0.065;
@@ -1245,8 +1486,10 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
       last = performance.now();
       render(last);
       cancelAnimationFrame(raf);
+      raf = 0;
     },
     dispose() {
+      disposed = true;
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", visibility);
@@ -1269,6 +1512,7 @@ export function createLandscape(canvas, { onSelect, onFrame, onError }) {
         m.map?.dispose();
         m.dispose();
       });
+      inkPass.dispose();
       renderer.dispose();
     },
   };

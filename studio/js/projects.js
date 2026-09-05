@@ -89,8 +89,8 @@ export const places = [
     project: "mac-markdown-pad",
     anchor: [7, 5, 6],
     position: [7, 0, 6],
-    camera: [20, 14, 24],
-    target: [11, 3, 6],
+    camera: [12, 10, 20],
+    target: [10, 2.8, 6],
     arc: [4, 5, 0],
     caption: pair(
       "左右纸面通过同一条源码锚点连起来，映射编辑与预览。",
