@@ -1,10 +1,10 @@
 <div align="center">
 
 <a href="https://loli.by/LCYLYM/studio/">
-  <img src="./assets/studio-hero.gif" width="100%" alt="生鱼安乐 LCYLYM：可交互的 3D 水墨山水作品集，包含 Agent 基础设施、DSH 插件、实时游戏与原生应用">
+  <img src="./assets/ink-cavern-hero.gif" width="100%" alt="墨行 · LCYLYM：循路入洞天，展开项目手卷。点击进入交互作品集。">
 </a>
 
-[中文](#中文) · [English](#english) · [沿着山径，看看作品 ↗](https://loli.by/LCYLYM/studio/) · [Blog](https://loli.by/)
+[中文](#中文) · [English](#english) · [进入墨行 · 交互作品集 ↗](https://loli.by/LCYLYM/studio/) · [Blog](https://loli.by/)
 
 </div>
 
@@ -66,4 +66,4 @@ I'm LCYLYM. I build tools that connect agents to real machines and workflows, na
 - **DSH community work:** [Compat Guardian](https://github.com/LCYLYM/dsh-plugin-compat-guardian) repairs plugin compatibility against explicit smoke contracts and independent verification. [Attachments](https://github.com/LCYLYM/dsh-attachments) adds workspace-bound file and multimedia input. These are independent community projects.
 - **Games and native apps:** [Guess Song](https://github.com/LCYLYM/guess-song) is a stateful multiplayer music game. [Mac Markdown Pad](https://github.com/LCYLYM/mac-markdown-pad) uses source-aware preview synchronization. [QuotaBar](https://github.com/LCYLYM/QuotaBar) brings AI usage to a physical Touch Bar.
 
-[Explore all 15 projects in the landscape ↗](https://loli.by/LCYLYM/studio/?lang=en) · [Back to 中文](#中文)
+[Explore the interactive portfolio ↗](https://loli.by/LCYLYM/studio/) · [Back to 中文](#中文)
